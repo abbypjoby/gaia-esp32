@@ -3,5 +3,8 @@
     "taskExplorer.enableMake": false,
     "search.exclude": {
       "**/build": true
+    },
+    "files.associations": {
+      "*.inc": "c"
     }
   }
