@@ -21,7 +21,7 @@
 
 
 bool isControlManual = false; 
-int gateStatus = DEFAULT_STATUS;
+int serverStatus = DEFAULT_STATUS;
 int buttonPressStatus = DEFAULT_STATUS;
 static xQueueHandle gpio_evt_queue = NULL;
 
@@ -58,43 +58,37 @@ static void handle_switch_press(void* arg)
                 
                 default:
                     ESP_LOGE("main", "Unknown switch_number, stopping gate");
-                    stopGate();
+                    buttonPressStatus = DEFAULT_STATUS;
                     break;
             }
-
         }
     }
 }
 
 
 
-// Keep updating gateStatus every 2 seconds
-void refresh_gate_status(void *pvParameters)
+// Always execute, and keep refreshing the `serverStatus` variable
+void refresh_server_status_task(void *pvParameters)
 {
     for(;;)
     {
-        gateStatus = fetch_gate_status();
-        ESP_LOGI(TAG, "Finish http example");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        ESP_LOGI("main","Auto Control Active, button=%d, server=%d", buttonPressStatus, serverStatus);
+        serverStatus = fetch_gate_status();
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
 
-// If in manual Mode, update the Server with buttonPressStatus
-void update_server_gate_status(void *pvParameters)
+// Keep trying to update the server with latest button press (if in manual mode)
+void update_server_statue_task(void *pvParameters)
 {
     for(;;)
     {
-        if (isControlManual && buttonPressStatus >= -1 && buttonPressStatus <= 1)
+        if (isControlManual)
         {   
-            // Update server here
+            ESP_LOGI("main","Manual Control Active, button=%d, server=%d", buttonPressStatus, serverStatus);
             update_gate_status(buttonPressStatus);
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-
-            // if server started to respond, turn on Auto Control Mode
-            if (gateStatus == buttonPressStatus){
-                isControlManual = false;
-            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
     }
     vTaskDelete(NULL);
@@ -102,16 +96,11 @@ void update_server_gate_status(void *pvParameters)
 
 
 void wifi_on_connected(void *pvParameter){
-    isControlManual = false; 
-    //API call - start task and refresh gateStatus every 2 seconds
 	ESP_LOGI("main", "--------- WiFi Connected");
 }
 
 void wifi_on_disconnected(void *pvParameter){
-    isControlManual = true; 
 	ESP_LOGI("main", "--------- WiFi Disconnected");
-
-    // Try to reconnect
 }
 
 void app_main()
@@ -128,64 +117,43 @@ void app_main()
     gpio_evt_queue = xQueueCreate(1, sizeof(uint32_t));
     xTaskCreate(handle_switch_press, "handle_switch_press", 2048, NULL, 10, NULL);
 
-    // Start two tasks, one for refreshing gate status, another to update with manual override values
-    xTaskCreate(refresh_gate_status, "refresh_gate_status", 8192, NULL, 5, NULL);
-    xTaskCreate(update_server_gate_status, "update_server_gate_status", 8192, NULL, 5, NULL);
+    // Start two tasks, one for handling Auto mode and another for Manual Mode
+    xTaskCreate(refresh_server_status_task, "refresh_server_status_task", 8192, NULL, 5, NULL);
+    xTaskCreate(update_server_statue_task, "update_server_statue_task", 8192, NULL, 5, NULL);
 
     for(;;)
     {
-        if (isControlManual)
-        {
-            ESP_LOGI("main","Manual Mode Active");
-            // Try to update the Server with Manual Signal
-            // if successful, turn to serverControlMode
-            switch (buttonPressStatus)
+        int finalState = serverStatus;
+        if (isControlManual){
+            // if server is updated, then serverStatus would have successfully changed to the current buttonStatus
+            if (serverStatus == buttonPressStatus)
             {
-                case CLOSE_STATUS:
-                    closeGate();
-                    break;
-
-                case OPEN_STATUS:
-                    openGate();
-                    break;
-
-                case STOP_STATUS:
-                    stopGate();
-                    break;
-            
-                default:
-                    ESP_LOGE("main", "Unknown Button Press Status in Manual Control Mode");
-                    stopGate();
-                    break;
+                isControlManual = false;
             }
-        } 
-        
-        else
-        {   
-            ESP_LOGI("main","Auto Mode Active");
-            switch (gateStatus)
-            {
-                case CLOSE_STATUS:
-                    closeGate();
-                    break;
-
-                case OPEN_STATUS:
-                    openGate();
-                    break;
-
-                case STOP_STATUS:
-                    stopGate();
-                    break;
-                    
-                default:
-                    // status 2 means API call failed, so some network issue,
-                    // therefore set to manualControl mode
-                    stopGate();
-                    isControlManual = true;
-                    break;
-            }
+            finalState = buttonPressStatus;
         }
+
+        ESP_LOGI("main","Final State is %d", finalState);
+        switch (finalState)
+        {
+            case CLOSE_STATUS:
+                closeGate();
+                break;
+
+            case OPEN_STATUS:
+                openGate();
+                break;
+
+            case STOP_STATUS:
+                stopGate();
+                break;
+        
+            default:
+                ESP_LOGE("main", "Unknown Button Press Status in Manual Control Mode");
+                stopGate();
+                break;
+        }    
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-
 }
+

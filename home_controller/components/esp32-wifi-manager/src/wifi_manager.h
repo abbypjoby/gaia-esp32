@@ -67,7 +67,7 @@ extern "C" {
  * @brief Defines when a connection is lost/attempt to connect is made, how many retries should be made before giving up.
  * Setting it to 2 for instance means there will be 3 attempts in total (original request + 2 retries)
  */
-#define	WIFI_MANAGER_MAX_RETRY				CONFIG_WIFI_MANAGER_MAX_RETRY
+#define	WIFI_MANAGER_MAX_RETRY				30000
 
 /** @brief Defines the task priority of the wifi_manager.
  *
@@ -76,7 +76,7 @@ extern "C" {
  * it to 1 though as the sub-tasks will now have a priority of 0 which is the priority
  * of freeRTOS' idle task.
  */
-#define WIFI_MANAGER_TASK_PRIORITY			CONFIG_WIFI_MANAGER_TASK_PRIORITY
+#define WIFI_MANAGER_TASK_PRIORITY			10
 
 /** @brief Defines the auth mode as an access point
  *  Value must be of type wifi_auth_mode_t

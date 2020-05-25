@@ -10,21 +10,21 @@
 #include "cJSON.h"
 
 
-static const char *TAG = "Server_Connection";
+const char *TAG = "Server_Connection";
 esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 {
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
-            ESP_LOGI(TAG, "HTTP_EVENT_ERROR");
+            ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
             break;
         case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
             break;
         case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGI(TAG, "HTTP_EVENT_HEADER_SENT");
+            ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
             break;
         case HTTP_EVENT_ON_HEADER:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_HEADER");
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER");
             printf("%.*s", evt->data_len, (char*)evt->data);
             break;
 
@@ -39,10 +39,10 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
             break;
 
         case HTTP_EVENT_ON_FINISH:
-            ESP_LOGI(TAG, "HTTP_EVENT_ON_FINISH");
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
             break;
         case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
+            ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
             break;
     }
     return ESP_OK;
@@ -70,7 +70,7 @@ int fetch_gate_status(void)
 
         cJSON *root = cJSON_Parse(local_response_buffer);
         is_on = cJSON_GetObjectItem(root,"is_on")->valueint;
-        ESP_LOGI(TAG, "is_on = %d", is_on);
+        ESP_LOGI(TAG, "Fetched the latest status ----->  is_on = %d", is_on);
         cJSON_Delete(root);
     }
     esp_http_client_cleanup(client);
@@ -100,6 +100,11 @@ int update_gate_status(int status)
     ESP_LOGI(TAG, "Successfully Update Gate Status, ResponseStatus = %d, content_length = %d",
             esp_http_client_get_status_code(client),
             esp_http_client_get_content_length(client));
+
+        cJSON *root = cJSON_Parse(local_response_buffer);
+        is_on = cJSON_GetObjectItem(root,"is_on")->valueint;
+        ESP_LOGI(TAG, "Updated the status to ----> is_on = %d", is_on);
+        cJSON_Delete(root);
     }
     esp_http_client_cleanup(client);
 
