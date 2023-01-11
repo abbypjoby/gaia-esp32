@@ -110,7 +110,6 @@ void app_main()
     wifi_manager_set_callback(EVENT_STA_GOT_IP, &wifi_on_connected);
     wifi_manager_set_callback(EVENT_STA_DISCONNECTED, &wifi_on_disconnected);
 
-
     /******* Switch and Interrupt Setup *********/
     initialize_pin_outputs();
     initialize_switch_inputs(gpio_isr_handler);
